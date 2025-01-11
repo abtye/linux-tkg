@@ -1,60 +1,69 @@
 ## linux-tkg
 
-This repository provides scripts to automatically download, patch and compile the Linux Kernel from [the official Linux git repository](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git), with a selection of patches aiming for better desktop/gaming experience. The provided patches can be enabled/disabled by editing the `customization.cfg` file and/or by following the interactive install script. You can use an external config file (default is `$HOME/.config/frogminer/linux-tkg.cfg`, tweakable with the `_EXT_CONFIG_PATH` variable in `customization.cfg`). You can also use your own patches (more information in `customization.cfg` file).
+此存储库提供了从[Linux官方git仓库](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git)自动下载、修补和编译Linux内核的脚本，并提供了一系列旨在获得更好桌面或游戏体验的补丁。通过编辑`customization.cfg`文件和遵循交互式安装脚本，可以启用或禁用提供的补丁。您可以使用外部配置文件（默认为`$HOME/.config/frogminer/linux-tkg.cfg`，可用`customization.cfg`中的`_EXT_CONFIG_PATH`变量进行调整）。您还可以使用自己的补丁（更多信息请参阅`customization.cfg`文件）。
 
-### Important information
+### 重要信息
 
-- **Non-pacman distros support can be considered experimental. You're invited to report issues you might encounter with it.**
-- **If your distro isn't using systemd, please set _configfile="running-kernel" in customization.cfg or you might end up with a non-bootable kernel**
-
-- Keep in mind building recent linux kernels with GCC will require ~20-25GB of disk space. Using llvm/clang, LTO, ccache and/or enabling more drivers in the defconfig will push that requirement higher, so make sure you have enough free space on the volume you're using to build.
+- **非 pacman 发行版的支持是实验性的。我们邀请您报告可能遇到的问题。**
+- **如果您的发行版不使用 systemd ，请在`customization.cfg`中设置`_configfile="running-kernel"`，否则你会获得一个无法启动的内核**
+- 请记住，使用 GCC 构建最新的 Linux 内核将需要约 20-25GB 的磁盘空间。使用 llvm/clang、LTO、ccache 或在 defconfig 中启用更多驱动程序将提高这一要求，因此请确保您正在使用的磁盘上有足够的可用空间来构建
 - In `intel_pstate` driver, frequency scaling aggressiveness has been changed with kernel 5.5 which results in stutters and poor performance in low/medium load scenarios (for higher power savings). As a workaround for our gaming needs, we are setting it to passive mode to make use of the `acpi_cpufreq` governor passthrough, keeping full support for turbo frequencies. It's combined with our aggressive ondemand governor by default for good performance on most CPUs while keeping frequency scaling for power savings. In a typical low/medium load scenario (Core i7 9700k, playing Mario Galaxy on Dolphin emulator) intel_pstate in performance mode gives a stuttery 45-50 fps experience, while passive mode + aggressive ondemand offers a locked 60 fps.
-- Nvidia's proprietary drivers might need to be patched if they don't support your chosen kernel OOTB: [Frogging-Family nvidia-all](https://github.com/Frogging-Family/nvidia-all) can do that automatically for you.
-- Note regarding kernels older than 5.9 on Arch Linux: since the switch to `zstd` compressed `initramfs` by default, you will face an `invalid magic at start of compress` error by default. You can workaround the issue by editing `/etc/mkinitcpio.conf` to uncomment the `COMPRESSION="lz4"` (for example, since that's the best option after zstd) line and regenerating `initramfs` for all kernels with `sudo mkinitpcio -P`
+- 如果 Nvidia 的专有驱动程序不支持您选择的内核OOTB，则可能需要进行修补：[Frogging Family Nvidia-all](https://github.com/Frogging-Family/nvidia-all) 可以自动为您完成此操作。
+- 关于 Arch Linux 上 5.9 之前的内核的注意事项：由于默认情况下切换到`zstd`压缩`initramfs`，您将在压缩开始时遇到`invalid magic at start of compress`（压缩开始时魔法无效）错误。您可以通过编辑`/etc/mkinitcpio.conf`来取消注释`COMPRESSION="lz4"`行（只是举例，因为这是除zstd之外的最佳选项），并使用`sudo mkinitpcio -P`为所有内核重新生成`initramfs`，从而解决此问题
 
-### Customization options
-#### Alternative CPU schedulers
 
-[CFS](https://en.wikipedia.org/wiki/Completely_Fair_Scheduler) is the only CPU scheduler available in the "vanilla" kernel sources ≤ 6.5.
-[EEVDF](https://lwn.net/Articles/925371/) is the only CPU scheduler available in the "vanilla" kernel sources ≥ 6.6.
+### 自定义选项
+#### 替换CPU调度器
 
-Its current implementation doesn't allow for injecting additional schedulers at kernel level, and requires replacing it. Only one scheduler can be patched in at a time.
-However, using [Sched-ext](https://github.com/sched-ext/scx), it's possible to inject CPU schedulers at runtime. We offer support for it on ≥ 6.8 by default.
-Arch users get scx schedulers from the `scx-scheds` package or on the [AUR](https://aur.archlinux.org/packages/scx-scheds-git) thanks to @sirlucjan (for persistence, set scheduler in "/etc/default/scx" and enable the `scx` service).
+[CFS](https://en.wikipedia.org/wiki/Completely_Fair_Scheduler) 
+是 ≤ 6.5 的原始内核源代码中唯一可用的CPU调度器。
+[EEVDF](https://lwn.net/Articles/925371/)
+是 ≥ 6.6 的原始内核源代码中唯一可用的CPU调度器。
 
-Alternative schedulers are optionally available in linux-tkg at build time:
+它目前的实现不允许在内核级别注入额外的调度器，需要替换它。一次只能修补一个调度器。
+
+然而，使用[Sched-ext](https://github.com/sched-ext/scx)，可以在运行时注入CPU调度器。默认情况下，我们在 ≥ 6.8 时提供支持。
+
+多亏了@sirlucja，Arch 用户可以从[AUR](https://aur.archlinux.org/packages/scx-scheds-git)的`scx-scheds`包获得scx调度器（对于持久化，在`/etc/default/scx`中设置调度器并启用`scx`服务）
+
+在构建内核时，linux-tkg中可以选择使用替代调度器：
+
 - Project C / PDS & BMQ by Alfred Chen: [blog](http://cchalpha.blogspot.com/ ), [code repository](https://gitlab.com/alfredchen/projectc)
 - MuQSS by Con Kolivas : [blog](http://ck-hack.blogspot.com/), [code repository](https://github.com/ckolivas/linux)
-- CacULE by Hamad Marri - CFS based : [code repository](https://github.com/hamadmarri/cacule-cpu-scheduler)
-- Task Type (TT) by Hamad Marri - CFS based : [code repository](https://github.com/hamadmarri/TT-CPU-Scheduler)
-- BORE (Burst-Oriented Response Enhancer) by Masahito Suzuki - CFS/EEVDF based : [code repository](https://github.com/firelzrd/bore-scheduler)
+- CacULE by Hamad Marri - 基于 CFS : [code repository](https://github.com/hamadmarri/cacule-cpu-scheduler)
+- Task Type (TT) by Hamad Marri - 基于 CFS : [code repository](https://github.com/hamadmarri/TT-CPU-Scheduler)
+- BORE (Burst-Oriented Response Enhancer) by Masahito Suzuki - 基于 CFS/EEVDF : [code repository](https://github.com/firelzrd/bore-scheduler)
 - Undead PDS : TkG's port of the pre-Project C "PDS-mq" scheduler by Alfred Chen. While PDS-mq got dropped with kernel 5.1 in favor of its BMQ evolution/rework, it wasn't on par with PDS-mq in gaming. "U" PDS still performed better in some cases than other schedulers, so it's been kept undead for a while.
 
-These alternative schedulers may offer a better performance/latency ratio in some scenarios. The availability of each scheduler depends on the chosen Kernel version: the script will display what's available on a per-version basis.
-#### Default tweaks
-- Memory management and swapping tweaks
-- Scheduling tweaks
-- `CFS/EEVDF` tweaks
-- Using the ["Cake"](https://www.bufferbloat.net/projects/codel/wiki/CakeTechnical/) network queue management system
-- Using `vm.max_map_count=16777216` by default
-- Cherry-picked patches from [Clear Linux's patchset](https://github.com/clearlinux-pkgs/linux)
+在某些情况下，这些替代调度器可能会提供更好的性能/延迟比。每个调度程序的可用性取决于所选的内核版本：脚本将显示每个版本的可用内容。
 
-#### Optional tweaks
-The `customization.cfg` file offers many toggles for extra tweaks:
-- [NTsync](https://repo.or.cz/linux/zf.git/shortlog/refs/heads/ntsync5), `Fsync` and `Futex2`(deprecated) support: can improve the performance in games, needs a patched wine like [wine-tkg](https://github.com/Frogging-Family/wine-tkg-git)
-- [Graysky's per-CPU-arch native optimizations](https://github.com/graysky2/kernel_compiler_patch): tunes the compiled code to to a specified CPU
-- Compile with GCC or Clang with optional `O2`/`O3` and `LTO` (Clang only) optimizations.
-  - **Warning regarding DKMS modules prior to v3.0.2 (2021-11-21) and Clang:** `DKMS` version v3.0.1 and earlier will default to using GCC, which will fail to build modules against a Clang-built kernel. This will - for example - break Nvidia drivers. Forcing older `DKMS` to use Clang can be done but isn't recommended.
-- Using [Modprobed-db](https://github.com/graysky2/modprobed-db)'s database can reduce the compilation time and produce a smaller kernel which will only contain the modules listed in it. **NOT recommended**
-  - **Warning**: make sure to read [thoroughly about it first](https://wiki.archlinux.org/index.php/Modprobed-db) since it comes with caveats that can lead to an unbootable kernel.
+#### 默认优化
+- 内存管理和交换调整
+- 调度优化
+- `CFS/EEVDF` 优化
+- 使用["Cake"](https://www.bufferbloat.net/projects/codel/wiki/CakeTechnical/)网络队列管理系统
+- 默认设置 `vm.max_map_count=16777216`
+- 从 [Clear Linux 的补丁组](https://github.com/clearlinux-pkgs/linux) 中精选的补丁
+
+#### 可选优化
+`customization.cfg`文件提供了许多额外调整的开关：
+
+- [NTsync](https://repo.or.cz/linux/zf.git/shortlog/refs/heads/ntsync5)、`Fsync` 和 `Futex2`（已弃用）支持：可以提高游戏性能，需要打了补丁的 wine，比如 [wine-tkg](https://github.com/Frogging-Family/wine-tkg-git)
+- [Graysky 的每个CPU架构原生优化](https://github.com/graysky2/kernel_compiler_patch)：将编译后的代码调整到指定的CPU
+- 使用`O2`/`O3`和`LTO`（仅Clang）优化。
+  - **关于v3.0.2（2021-11-21）和Clang之前的DKMS模块的警告:** DKMS v3.0.1及更早版本将默认使用GCC，这将无法针对Clang构建的内核构建模块。例如，这将破坏Nvidia驱动程序。可以强制较旧的DKMS使用Clang，但不建议这样做。
+- 使用[Modprobed-db](https://github.com/graysky2/modprobed-db)的数据库可以减少编译时间，并生成一个只包含其中列出的模块的较小内核。**不推荐**
+  - **警告**：一定要先仔细阅读[文档](https://wiki.archlinux.org/index.php/Modprobed-db)，因为它附带了可能导致内核无法启动的警告。
 - "Zenify" patchset using core blk, mm and scheduler tweaks from Zen
-- `ZFS` FPU symbols (<5.9)
-- Overrides for missing ACS capabilities
-- [Waydroid](https://wiki.archlinux.org/title/Waydroid) support
-- [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB) support
-- Provide own kernel `.config` file
+- "Zenify" 补丁组使用来自 Zen 的 core blk, mm 和 调度器优化
+- `ZFS` FPU 标志 (<5.9)
+- 覆盖缺失的ACS功能
+- [Waydroid](https://wiki.archlinux.org/title/Waydroid) 支持
+- [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB) 支持
+- 提供自己的内核`.config`文件
 - ...
-#### User patches
+
+#### 用户补丁
 
 To apply your own patch files using the provided scripts, you will need to put them in a `linux<VERSION><PATCHLEVEL>-tkg-userpatches` folder -- where _VERSION_ and _PATCHLEVEL_ are the kernel version and patch level, as specified in [linux Makefile](https://github.com/torvalds/linux/blob/master/Makefile), the patch works on, _e.g_ `linux65-tkg-userpatches` -- at the same level as the `PKGBUILD` file, with the `.mypatch` extension. The script will by default ask if you want to apply them, one by one. The option `_user_patches` should be set to `true` in the `customization.cfg` file for this to work.
 

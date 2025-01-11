@@ -53,7 +53,7 @@ if [ -n "$_custom_pkgbase" ]; then
 else
   pkgbase=linux"${_basever}"-tkg-"${_cpusched}"${_compiler_name}
 fi
-pkgname=("${pkgbase}" "${pkgbase}-headers")
+pkgname=("${pkgbase}")
 pkgver="${_basekernel}"."${_sub}"
 pkgrel=273
 pkgdesc='Linux-tkg'
@@ -205,111 +205,9 @@ hackbase() {
   fi
 }
 
-hackheaders() {
-  pkgdesc="Headers and scripts for building modules for the $pkgdesc kernel - https://github.com/Frogging-Family/linux-tkg"
-  provides=("linux-headers=${pkgver}" "${pkgbase}-headers=${pkgver}")
-  case $_basever in
-    54|57|58|59|510)
-    ;;
-    *)
-      depends=('pahole')
-    ;;
-  esac
-
-  _define_kernel_abs_paths
-  cd "$_kernel_work_folder_abs"
-
-  local builddir="${pkgdir}/usr/lib/modules/$(<version)/build"
-
-  msg2 "Installing build files..."
-  install -Dt "$builddir" -m644 .config Makefile Module.symvers System.map \
-    localversion.* version vmlinux
-  install -Dt "$builddir/kernel" -m644 kernel/Makefile
-  install -Dt "$builddir/arch/x86" -m644 arch/x86/Makefile
-  cp -t "$builddir" -a scripts
-
-  # add objtool for external module building and enabled VALIDATION_STACK option
-  install -Dt "$builddir/tools/objtool" tools/objtool/objtool
-
-  # add xfs and shmem for aufs building
-  mkdir -p "$builddir"/{fs/xfs,mm}
-
-  # add resolve_btfids on 5.16+
-  if [[ $_basever = 6* ]] || [ $_basever -ge 516 ]; then
-    install -Dt "$builddir"/tools/bpf/resolve_btfids tools/bpf/resolve_btfids/resolve_btfids || ( warning "$builddir/tools/bpf/resolve_btfids was not found. This is undesirable and might break dkms modules !!! Please review your config changes and consider using the provided defconfig and tweaks without further modification." && read -rp "Press enter to continue anyway" )
-  fi
-
-  msg2 "Installing headers..."
-  cp -t "$builddir" -a include
-  cp -t "$builddir/arch/x86" -a arch/x86/include
-  install -Dt "$builddir/arch/x86/kernel" -m644 arch/x86/kernel/asm-offsets.s
-
-  install -Dt "$builddir/drivers/md" -m644 drivers/md/*.h
-  install -Dt "$builddir/net/mac80211" -m644 net/mac80211/*.h
-
-  # http://bugs.archlinux.org/task/13146
-  install -Dt "$builddir/drivers/media/i2c" -m644 drivers/media/i2c/msp3400-driver.h
-
-  # http://bugs.archlinux.org/task/20402
-  install -Dt "$builddir/drivers/media/usb/dvb-usb" -m644 drivers/media/usb/dvb-usb/*.h
-  install -Dt "$builddir/drivers/media/dvb-frontends" -m644 drivers/media/dvb-frontends/*.h
-  install -Dt "$builddir/drivers/media/tuners" -m644 drivers/media/tuners/*.h
-
-  msg2 "Installing KConfig files..."
-  find . -name 'Kconfig*' -exec install -Dm644 {} "$builddir/{}" \;
-
-  msg2 "Removing unneeded architectures..."
-  local arch
-  for arch in "$builddir"/arch/*/; do
-    [[ $arch = */x86/ ]] && continue
-    echo "Removing $(basename "$arch")"
-    rm -r "$arch"
-  done
-
-  msg2 "Removing documentation..."
-  rm -r "$builddir/Documentation"
-
-  msg2 "Removing broken symlinks..."
-  find -L "$builddir" -type l -printf 'Removing %P\n' -delete
-
-  msg2 "Removing loose objects..."
-  find "$builddir" -type f -name '*.o' -printf 'Removing %P\n' -delete
-
-  msg2 "Stripping build tools..."
-  local file
-  while read -rd '' file; do
-    case "$(file -Sib "$file")" in
-      application/x-sharedlib\;*)      # Libraries (.so)
-        strip -v $STRIP_SHARED "$file" ;;
-      application/x-archive\;*)        # Libraries (.a)
-        strip -v $STRIP_STATIC "$file" ;;
-      application/x-executable\;*)     # Binaries
-        strip -v $STRIP_BINARIES "$file" ;;
-      application/x-pie-executable\;*) # Relocatable binaries
-        strip -v $STRIP_SHARED "$file" ;;
-    esac
-  done < <(find "$builddir" -type f -perm -u+x ! -name vmlinux -print0)
-
-  msg2 "Adding symlink..."
-  mkdir -p "$pkgdir/usr/src"
-  ln -sr "$builddir" "$pkgdir/usr/src/$pkgbase"
-
-  if [ "$_STRIP" = "true" ]; then
-    echo "Stripping vmlinux..."
-    strip -v $STRIP_STATIC "$builddir/vmlinux"
-  fi
-
-  if [ "$_NUKR" = "true" ]; then
-    rm -rf "$srcdir" # Nuke the entire src folder so it'll get regenerated clean on next build
-  fi
-}
-
 source /dev/stdin <<EOF
 package_${pkgbase}() {
 hackbase
 }
 
-package_${pkgbase}-headers() {
-hackheaders
-}
 EOF

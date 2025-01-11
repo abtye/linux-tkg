@@ -12,6 +12,13 @@ _kernel_git_remotes=(
   ["googlesource.com"]="https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux-stable"
   ["github.com"]="https://github.com/gregkh/linux.git"
   ["torvalds"]="https://github.com/torvalds/linux.git"
+  ["cqu"]="https://mirrors.cqu.edu.cn/git/linux.git"
+  ["nju"]="https://mirror.nju.edu.cn/git/linux.git"
+  ["sjtu"]="https://mirror.sjtu.edu.cn/git/linux.git"
+  ["tuna"]="https://mirrors.tuna.tsinghua.edu.cn/git/linux.git"
+  ["ustc"]="https://mirrors.ustc.edu.cn/linux.git"
+  ["xjtu"]="https://mirrors.xjtu.edu.cn/linux.git"
+
 )
 
 _git_remote_names=( "${!_kernel_git_remotes[@]}" )
