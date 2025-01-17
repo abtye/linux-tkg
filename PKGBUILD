@@ -65,7 +65,7 @@ if [ "$_compiler_name" = "-llvm" ]; then
   makedepends+=( 'lld' 'clang' 'llvm')
 fi
 optdepends=('schedtool')
-options=('!strip' 'docs')
+options=('!strip' '!docs')
 
 for f in "$_where"/linux-tkg-config/"$_basekernel"/* "$_where"/linux-tkg-patches/"$_basekernel"/*; do
   source+=( "$f" )
